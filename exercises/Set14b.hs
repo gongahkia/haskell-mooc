@@ -76,12 +76,12 @@ getAllQuery = Query (T.pack "SELECT account, amount FROM events;")
 -- NOTE! Do not add anything to the name, otherwise you'll get weird
 -- test failures later.
 openDatabase :: String -> IO Connection
-openDatabase = todo
+openDatabase tableName = do bankDatabase <- open (tableName); execute_ (bankDatabase) (initQuery); return (bankDatabase)
 
 -- given a db connection, an account name, and an amount, deposit
 -- should add an (account, amount) row into the database
 deposit :: Connection -> T.Text -> Int -> IO ()
-deposit = todo
+deposit bankDatabase accountName depositAmount = execute (bankDatabase) (depositQuery) (accountName, depositAmount)
 
 ------------------------------------------------------------------------------
 -- Ex 2: Fetching an account's balance. Below you'll find
@@ -112,7 +112,7 @@ balanceQuery :: Query
 balanceQuery = Query (T.pack "SELECT amount FROM events WHERE account = ?;")
 
 balance :: Connection -> T.Text -> IO Int
-balance = todo
+balance bankDatabase accountName = if (accountName == (T.pack "")) then (return (0)) else do amounts <- query (bankDatabase) (balanceQuery) [accountName] :: IO [[Int]]; return (sum (map (head) amounts))
 
 ------------------------------------------------------------------------------
 -- Ex 3: Now that we have the database part covered, let's think about
@@ -144,14 +144,14 @@ balance = todo
 --   parseCommand [T.pack "deposit", T.pack "madoff", T.pack "123456"]
 --     ==> Just (Deposit "madoff" 123456)
 
-data Command = Deposit T.Text Int | Balance T.Text
+data Command = Deposit T.Text Int | Balance T.Text | Withdraw T.Text Int
   deriving (Show, Eq)
 
 parseInt :: T.Text -> Maybe Int
 parseInt = readMaybe . T.unpack
 
 parseCommand :: [T.Text] -> Maybe Command
-parseCommand = todo
+parseCommand listOfTextsForRequest = if (length (listOfTextsForRequest) == 3) then (if (((listOfTextsForRequest !! 0) == (T.pack "deposit")) == True) then (do depositAmount <- parseInt (listOfTextsForRequest !! 2); return (Deposit (listOfTextsForRequest !! 1) (depositAmount))) else if (((listOfTextsForRequest !! 0) == (T.pack "withdraw")) == True) then (do withdrawAmount <- parseInt (listOfTextsForRequest !! 2); return (Withdraw (listOfTextsForRequest !! 1) (withdrawAmount))) else Nothing) else if (length (listOfTextsForRequest) == 2) then (if (((listOfTextsForRequest !! 0) == (T.pack "balance")) == True) then (Just (Balance (listOfTextsForRequest !! 1))) else Nothing) else Nothing
 
 ------------------------------------------------------------------------------
 -- Ex 4: Running commands. Implement the IO operation perform that takes a
@@ -177,7 +177,10 @@ parseCommand = todo
 --   "0"
 
 perform :: Connection -> Maybe Command -> IO T.Text
-perform = todo
+perform bankDatabase (Just (Deposit (accountName) (depositAmount))) = do deposit (bankDatabase) (accountName) (depositAmount); return (T.pack ("OK"))
+perform bankDatabase (Just (Balance (accountName))) = do balanceAmount <- balance (bankDatabase) (accountName); return (T.pack (show (balanceAmount)))
+perform bankDatabase (Just (Withdraw (accountName) (withdrawAmount))) = do deposit (bankDatabase) (accountName) (0 - withdrawAmount); return (T.pack ("OK"))
+perform _ _ = return (T.pack ("ERROR"))
 
 ------------------------------------------------------------------------------
 -- Ex 5: Next up, let's set up a simple HTTP server. Implement a WAI
@@ -192,12 +195,12 @@ perform = todo
 --   - Go to <http://localhost:8899> in your browser, you should see the text BANK
 
 encodeResponse :: T.Text -> LB.ByteString
-encodeResponse t = LB.fromStrict (encodeUtf8 t)
+encodeResponse text = LB.fromStrict (encodeUtf8 (text))
 
 -- Remember:
 -- type Application = Request -> (Response -> IO ResponseReceived) -> IO ResponseReceived
 simpleServer :: Application
-simpleServer request respond = todo
+simpleServer asksWith repliesWith = if ((((pathInfo (asksWith)) == []) == True)) then repliesWith (responseLBS (status200) ([]) (encodeResponse (T.pack ("BANK")))) else repliesWith (responseLBS (status200) ([]) (encodeResponse (T.pack (show (pathInfo (asksWith))))))
 
 ------------------------------------------------------------------------------
 -- Ex 6: Now we finally have all the pieces we need to actually
@@ -226,17 +229,13 @@ simpleServer request respond = todo
 -- Remember:
 -- type Application = Request -> (Response -> IO ResponseReceived) -> IO ResponseReceived
 server :: Connection -> Application
-server db request respond = todo
+server bankDatabase asksWith repliesWith = do response <- perform (bankDatabase) (parseCommand (pathInfo (asksWith))); repliesWith (responseLBS (status200) ([]) (encodeResponse (response)))
 
 port :: Int
 port = 3421
 
 main :: IO ()
-main = do
-  db <- openDatabase "bank.db"
-  putStr "Running on port: "
-  print port
-  run port (server db)
+main = do bankDatabase <- openDatabase "bank.db"; putStrLn "Running on port: "; print (port); run port (server (bankDatabase))
 
 ------------------------------------------------------------------------------
 -- Ex 7: Add the possibility to withdraw funds to the API. Withdrawing
@@ -276,5 +275,3 @@ main = do
 --    - http://localhost:3421/deposit/pekka/1/3
 --    - http://localhost:3421/balance
 --    - http://localhost:3421/balance/matti/pekka
-
-

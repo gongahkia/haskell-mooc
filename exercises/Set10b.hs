@@ -22,7 +22,7 @@ import Mooc.Todo
 --   False ||| undefined ==> an error!
 
 (|||) :: Bool -> Bool -> Bool
-x ||| y = todo
+argument1 ||| argument2 = if argument2 then True else argument1
 
 ------------------------------------------------------------------------------
 -- Ex 2: Define the function boolLength, that returns the length of a
@@ -36,7 +36,8 @@ x ||| y = todo
 --   length [False,undefined] ==> 2
 
 boolLength :: [Bool] -> Int
-boolLength xs = todo
+boolLength [] = 0
+boolLength (boolean : listOfBooleans) = if boolean then 1 + boolLength (listOfBooleans) else 1 + boolLength (listOfBooleans)
 
 ------------------------------------------------------------------------------
 -- Ex 3: Define the function validate which, given a predicate and a
@@ -49,8 +50,8 @@ boolLength xs = todo
 --   validate undefined 3          ==>  an error!
 --   validate (\x -> undefined) 3  ==>  an error!
 
-validate :: (a -> Bool) -> a -> a
-validate predicate value = todo
+validate :: (x -> Bool) -> x -> x
+validate predicate value = if predicate (value) then value else value
 
 ------------------------------------------------------------------------------
 -- Ex 4: Even though we can't implement the generic seq function
@@ -80,14 +81,17 @@ validate predicate value = todo
 --   myseq (undefined::[Int])
 --     ==> *** Exception: Prelude.undefined
 
-class MySeq a where
-  myseq :: a -> b -> b
+class MySeq x where
+  myseq :: x -> y -> y
 
 instance MySeq Bool where
-  myseq = todo
+  myseq True  val = val
+  myseq False val = val
 
 instance MySeq Int where
-  myseq = todo
+  myseq 0 val = val
+  myseq _ val = val
 
-instance MySeq [a] where
-  myseq = todo
+instance MySeq [x] where
+  myseq [] val = val
+  myseq _ val = val

@@ -20,7 +20,7 @@ import Codec.Picture
 -- We use Ints for convenience even though the valid range is only
 -- 0-255.
 data Color = Color Int Int Int
-  deriving (Show,Eq)
+  deriving (Show, Eq)
 
 getRed :: Color -> Int
 getRed (Color r _ _) = r
@@ -133,7 +133,7 @@ renderListExample = renderList justADot (9,11) (9,11)
 --      ["000000","000000","000000"]]
 
 dotAndLine :: Picture
-dotAndLine = todo
+dotAndLine = Picture (\(Coord xPos yPos) -> if (xPos == 3 && yPos == 4) then white else if (yPos == 8) then pink else black)
 ------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------------
@@ -166,11 +166,10 @@ dotAndLine = todo
 --          ["7f0000","7f0000","7f0000"]]
 
 blendColor :: Color -> Color -> Color
-blendColor = todo
+blendColor (Color red1 green1 blue1) (Color red2 green2 blue2) = Color (div (red2 + red1) (2)) (div (green2 + green1) (2)) (div (blue2 + blue1) (2))
 
 combine :: (Color -> Color -> Color) -> Picture -> Picture -> Picture
-combine = todo
-
+combine colorCombine (Picture (picture1)) (Picture (picture2)) = Picture (\coordinates -> colorCombine (picture1 (coordinates)) (picture2 (coordinates)))
 ------------------------------------------------------------------------------
 
 -- Let's define blend, we'll use it later
@@ -240,7 +239,7 @@ exampleCircle = fill red (circle 80 100 200)
 --        ["000000","000000","000000","000000","000000","000000"]]
 
 rectangle :: Int -> Int -> Int -> Int -> Shape
-rectangle x0 y0 w h = todo
+rectangle xPos yPos width height = Shape (\(Coord (x) (y)) -> if ((x >= xPos) && (width + xPos > x) && (y >= yPos) && (height + yPos > y)) then True else False)
 ------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------------
@@ -256,10 +255,10 @@ rectangle x0 y0 w h = todo
 -- shape.
 
 union :: Shape -> Shape -> Shape
-union = todo
+union (Shape shape1) (Shape shape2) = Shape (\(Coord (x) (y)) -> if (shape1 (Coord (x) (y)) || shape2 (Coord (x) (y))) then True else False)
 
 cut :: Shape -> Shape -> Shape
-cut = todo
+cut   (Shape shape1) (Shape shape2) = Shape (\(Coord (x) (y)) -> if (shape1 (Coord (x) (y)) && not (shape2 (Coord (x) (y)))) then True else False)
 ------------------------------------------------------------------------------
 
 -- Here's a snowman, built using union from circles and rectangles.
@@ -287,7 +286,7 @@ exampleSnowman = fill white snowman
 --        ["000000","000000","000000"]]
 
 paintSolid :: Color -> Shape -> Picture -> Picture
-paintSolid color shape base = todo
+paintSolid (Color red green blue) (Shape shape) (Picture picture) = Picture (\(Coord (x) (y)) -> if (shape (Coord (x) (y))) then (Color (red) (green) (blue)) else (picture (Coord (x) (y))))
 ------------------------------------------------------------------------------
 
 allWhite :: Picture
@@ -332,7 +331,7 @@ stripes a b = Picture f
 --       ["000000","000000","000000","000000","000000"]]
 
 paint :: Picture -> Shape -> Picture -> Picture
-paint pat shape base = todo
+paint (Picture patternPicture) (Shape shape) (Picture picture) = Picture (\(Coord (x) (y)) -> if (shape (Coord (x) (y))) then (patternPicture (Coord (x) (y))) else (picture (Coord (x) (y))))
 ------------------------------------------------------------------------------
 
 -- Here's a patterned version of the snowman example. See it by running:
@@ -395,19 +394,21 @@ xy = Picture f
 data Fill = Fill Color
 
 instance Transform Fill where
-  apply = todo
+  apply (Fill color) (Picture picture) = solid (color)
 
 data Zoom = Zoom Int
   deriving Show
 
 instance Transform Zoom where
-  apply = todo
+  apply (Zoom zoomFactor) (Picture picture) = zoom (zoomFactor) (Picture (picture))
 
 data Flip = FlipX | FlipY | FlipXY
   deriving Show
 
 instance Transform Flip where
-  apply = todo
+  apply FlipX  (Picture picture) = Picture (\(Coord (x) (y)) -> picture (Coord (0 - x) (0 + y)))
+  apply FlipY  (Picture picture) = Picture (\(Coord (x) (y)) -> picture (Coord (0 + x) (0 - y)))
+  apply FlipXY (Picture picture) = Picture (\(Coord (x) (y)) -> picture (Coord (0 + y) (0 + x)))
 ------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------------
@@ -419,11 +420,11 @@ instance Transform Flip where
 --
 -- Hint: you might need a constraint on the instance
 
-data Chain a b = Chain a b
+data Chain x y = Chain x y
   deriving Show
 
-instance Transform (Chain a b) where
-  apply = todo
+instance (Transform firstTransform, Transform secondTransform) => Transform (Chain firstTransform secondTransform) where 
+  apply (Chain (firstTransform) (secondTransform)) (Picture (picture)) = apply (firstTransform) (apply (secondTransform) (Picture (picture)))
 ------------------------------------------------------------------------------
 
 -- Now we can redefine largeVerticalStripes using the above Transforms.
@@ -461,7 +462,8 @@ data Blur = Blur
   deriving Show
 
 instance Transform Blur where
-  apply = todo
+  apply (Blur) (Picture (picture)) = Picture (\(Coord (x) (y)) -> mean (map (picture) ([(Coord (x - 1) (y)), (Coord (x) (y - 1)), (Coord (x + 1) (y)), (Coord (x) (y + 1)), (Coord (x) (y))])))
+    where mean colors = let (red, green, blue) = foldr (\(Color (r) (g) (b)) ((avgR), (avgG), (avgB)) -> ((r + avgR), (g + avgG), (b + avgB))) (0, 0, 0) colors in Color (div (red) (length (colors))) (div (green) (length (colors))) (div (blue) (length (colors)))
 ------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------------
@@ -479,11 +481,11 @@ data BlurMany = BlurMany Int
   deriving Show
 
 instance Transform BlurMany where
-  apply = todo
+  apply (BlurMany (0)) (Picture (picture)) = Picture (picture)
+  apply (BlurMany (n)) (Picture (picture)) = apply (BlurMany (n - 1)) (apply (Blur) (Picture (picture)))
 ------------------------------------------------------------------------------
 
 -- Here's a blurred version of our original snowman. See it by running
 --   render blurredSnowman 400 300 "blurred.png"
 
 blurredSnowman = apply (BlurMany 2) exampleSnowman
-

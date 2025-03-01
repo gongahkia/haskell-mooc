@@ -39,10 +39,10 @@ import Data.List
 test :: State Int Bool
 test = do
   x <- get
-  return (x<10)
+  return (x > 10)
 
-ifM :: Monad m => m Bool -> m a -> m a -> m a
-ifM opBool opThen opElse = todo
+ifM :: Monad monad => monad Bool -> monad x -> monad x -> monad x
+ifM (condition) (ifTrue) (ifFalse) = do {conditionValue <- condition; if conditionValue then ifTrue else ifFalse}
 
 ------------------------------------------------------------------------------
 -- Ex 2: the standard library function Control.Monad.mapM defines a
@@ -76,15 +76,15 @@ ifM opBool opThen opElse = todo
 -- Do not change safeDiv or perhapsIncrement, they're used by the
 -- examples & test outputs.
 safeDiv :: Double -> Double -> Maybe Double
-safeDiv x 0.0 = Nothing
-safeDiv x y = Just (x/y)
+safeDiv double 0.0 = Nothing
+safeDiv double divisor = Just (double / divisor)
 
 perhapsIncrement :: Bool -> Int -> State Int ()
-perhapsIncrement True x = modify (+x)
-perhapsIncrement False _ = return ()
+perhapsIncrement True amount = modify (+amount)
+perhapsIncrement False amount = return ()
 
-mapM2 :: Monad m => (a -> b -> m c) -> [a] -> [b] -> m [c]
-mapM2 op xs ys = todo
+mapM2 :: Monad monad => (x -> y -> monad z) -> [x] -> [y] -> monad [z]
+mapM2 operation list1 list2 = sequence (zipWith (operation) (list1) (list2))
 
 ------------------------------------------------------------------------------
 -- Ex 3: Finding paths.
@@ -140,16 +140,15 @@ maze1 = [("Entry",["Pit","Corridor 1"])
 --   runState (visit maze1 "Entry") ["Corridor 1"]
 --     ==> ((),["Pit","Entry","Corridor 1"])
 
-
 visit :: [(String,[String])] -> String -> State [String] ()
-visit maze place = todo
+visit (maze) (place1) = do {visited <- get; if ((elem (place1) (visited)) == False) then do {put (place1 : visited); sequence_ (map (visit (maze)) (snd (head (filter (\(place2, _) -> place2 == place1) maze))))} else return ()}
 
 -- Now you should be able to implement path using visit. If you run
 -- visit on a place using an empty state, you'll get a state that
 -- lists all the places that are reachable from the starting place.
 
 path :: [(String,[String])] -> String -> String -> Bool
-path maze place1 place2 = todo
+path (maze) (place1) (place2) = elem (place2) (snd (runState (visit (maze) (place1)) []))
 
 ------------------------------------------------------------------------------
 -- Ex 4: Given two lists, ks and ns, find numbers i and j from ks,
@@ -164,8 +163,8 @@ path maze place1 place2 = todo
 --
 -- PS. The tests don't care about the order of results.
 
-findSum2 :: [Int] -> [Int] -> [(Int,Int,Int)]
-findSum2 ks ns = todo
+findSum2 :: [Int] -> [Int] -> [(Int, Int, Int)]
+findSum2 list1 list2 = [(elem1, elem2, elem3) | elem1 <- list1, elem2 <- list1, elem3 <- list2, elem1 + elem2 == elem3]
 
 ------------------------------------------------------------------------------
 -- Ex 5: compute all possible sums of elements from the given
@@ -186,7 +185,7 @@ findSum2 ks ns = todo
 --     ==> [7,3,5,1,6,2,4,0]
 
 allSums :: [Int] -> [Int]
-allSums xs = todo
+allSums list = [sum | subList <- subsequences (list), sum <- [sum (subList)]]
 
 ------------------------------------------------------------------------------
 -- Ex 6: the standard library defines the function
@@ -213,10 +212,10 @@ allSums xs = todo
 --  sumBounded 5 [1,2,3,1,-2]   -- 1+2+3=6 which results in Nothing
 --    ==> Nothing
 sumBounded :: Int -> [Int] -> Maybe Int
-sumBounded k xs = foldM (f1 k) 0 xs
+sumBounded value list = foldM (f1 value) 0 list
 
 f1 :: Int -> Int -> Int -> Maybe Int
-f1 k acc x = todo
+f1 bound accumulator value = if (accumulator + value <= bound) then Just (accumulator + value) else Nothing
 
 -- sumNotTwice computes the sum of a list, but counts only the first
 -- occurrence of each value.
@@ -227,10 +226,10 @@ f1 k acc x = todo
 --  sumNotTwice [3,-2,3]         ==> 1
 --  sumNotTwice [1,2,-2,3]       ==> 4
 sumNotTwice :: [Int] -> Int
-sumNotTwice xs = fst $ runState (foldM f2 0 xs) []
+sumNotTwice list = fst (runState (foldM (f2) 0 list) [])
 
 f2 :: Int -> Int -> State [Int] Int
-f2 acc x = todo
+f2 accumulator value = do {visited <- get; case (elemIndex (value) (visited)) of Nothing -> do {put (value : visited); return (accumulator + value)}; Just (index) -> return (accumulator)}
 
 ------------------------------------------------------------------------------
 -- Ex 7: here is the Result type from Set12. Implement a Monad Result
@@ -251,22 +250,16 @@ f2 acc x = todo
 --   MkResult 1 >>= (\x -> MkResult (x+1))
 --     ==> MkResult 2
 
-data Result a = MkResult a | NoResult | Failure String deriving (Show,Eq)
+data Result x = MkResult x | NoResult | Failure String
+  deriving (Show, Eq)
 
-instance Functor Result where
-  -- The same Functor instance you used in Set12 works here.
-  fmap = todo
+instance Functor Result where fmap (function) (result) = case result of MkResult (val) -> MkResult (function (val)); NoResult -> NoResult; Failure (string) -> Failure (string)
 
 -- This is an Applicative instance that works for any monad, you
 -- can just ignore it for now. We'll get back to Applicative later.
-instance Applicative Result where
-  pure = return
-  (<*>) = ap
+instance Applicative Result where pure = return; (<*>) = ap
 
-instance Monad Result where
-  -- implement return and >>=
-  return = todo
-  (>>=) = todo
+instance Monad Result where return = MkResult; (>>=) (MkResult (val)) (function) = function (val); (>>=) (NoResult) (function) = NoResult; (>>=) (Failure (string)) (function) = Failure (string)
 
 ------------------------------------------------------------------------------
 -- Ex 8: Here is the type SL that combines the State and Logger
@@ -290,42 +283,35 @@ instance Monad Result where
 --   runSL (replicateM_ 5 (modifySL (+1) >> getSL >>= \x -> msgSL ("got "++show x))) 1
 --      ==> ((),6,["got 2","got 3","got 4","got 5","got 6"])
 
-data SL a = SL (Int -> (a,Int,[String]))
+data SL x = SL (Int -> (x, Int, [String]))
 
 -- Run an SL operation with the given starting state
-runSL :: SL a -> Int -> (a,Int,[String])
-runSL (SL f) state = f state
+runSL :: SL x -> Int -> (x, Int, [String])
+runSL (SL (value)) (state) = value (state)
 
 -- Write a log message
 msgSL :: String -> SL ()
-msgSL msg = SL (\s -> ((),s,[msg]))
+msgSL message = SL (\state -> ((), state, [message]))
 
 -- Fetch the state
 getSL :: SL Int
-getSL = SL (\s -> (s,s,[]))
+getSL = SL (\state -> (state, state, []))
 
 -- Overwrite the state
 putSL :: Int -> SL ()
-putSL s' = SL (\s -> ((),s',[]))
+putSL value = SL (\state -> ((), value, []))
 
 -- Modify the state
 modifySL :: (Int->Int) -> SL ()
-modifySL f = SL (\s -> ((),f s,[]))
+modifySL function = SL (\state -> ((), function (state), []))
 
-instance Functor SL where
-  -- implement fmap
-  fmap = todo
+instance Functor SL where fmap (function) (SL (step)) = SL (\state -> let (val, furtherState, log) = step state in (function (val), furtherState, log))
 
 -- This is an Applicative instance that works for any monad, you
 -- can just ignore it for now. We'll get back to Applicative later.
-instance Applicative SL where
-  pure = return
-  (<*>) = ap
+instance Applicative SL where pure = return; (<*>) = ap
 
-instance Monad SL where
-  -- implement return and >>=
-  return = todo
-  (>>=) = todo
+instance Monad SL where return (val) = SL (\state -> (val, state, [])); (>>=) (SL (step)) (function) = SL (\state -> let (val, furtherState, log) = step state in let (SL (step2)) = function (val) in let (val2, furtherState2, log2) = step2 furtherState in (val2, furtherState2, (log ++ log2)))
 
 ------------------------------------------------------------------------------
 -- Ex 9: Implement the operation mkCounter that produces the IO operations
@@ -353,4 +339,4 @@ instance Monad SL where
 --  4
 
 mkCounter :: IO (IO (), IO Int)
-mkCounter = todo
+mkCounter = do {ioRefCounter <- newIORef (0); return (do {modifyIORef ioRefCounter (+1)}, readIORef ioRefCounter)}

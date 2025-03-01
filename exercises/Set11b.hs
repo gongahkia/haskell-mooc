@@ -20,7 +20,7 @@ import Mooc.Todo
 --   "xfoobarquux"
 
 appendAll :: IORef String -> [String] -> IO ()
-appendAll = todo
+appendAll (ioRefString) (listOfStrings) = do modifyIORef (ioRefString) (\string -> string ++ (concat (listOfStrings)))
 
 ------------------------------------------------------------------------------
 -- Ex 2: Given two IORefs, swap the values stored in them.
@@ -34,8 +34,8 @@ appendAll = todo
 --   *Set11b> readIORef y
 --   "x"
 
-swapIORefs :: IORef a -> IORef a -> IO ()
-swapIORefs = todo
+swapIORefs :: IORef x -> IORef x -> IO ()
+swapIORefs (ioRefString1) (ioRefString2) = do value1 <- readIORef (ioRefString1); value2 <- readIORef (ioRefString2); writeIORef (ioRefString1) (value2); writeIORef (ioRefString2) (value1)
 
 ------------------------------------------------------------------------------
 -- Ex 3: sometimes one bumps into IO operations that return IO
@@ -60,8 +60,8 @@ swapIORefs = todo
 --     do l <- readLn
 --        replicateM l getLine
 
-doubleCall :: IO (IO a) -> IO a
-doubleCall op = todo
+doubleCall :: IO (IO x) -> IO x
+doubleCall (ioOperation) = do operation <- ioOperation; operation
 
 ------------------------------------------------------------------------------
 -- Ex 4: implement the analogue of function composition (the (.)
@@ -79,8 +79,8 @@ doubleCall op = todo
 --   2. take the resulting value (of type a) and pass it to op1
 --   3. return the result (of type b)
 
-compose :: (a -> IO b) -> (c -> IO a) -> c -> IO b
-compose op1 op2 c = todo
+compose :: (x -> IO y) -> (z -> IO x) -> z -> IO y
+compose (operation1) (operation2) (value) = do result1 <- operation2 (value); result2 <- operation1 (result1); return result2
 
 ------------------------------------------------------------------------------
 -- Ex 5: Reading lines from a file. The module System.IO defines
@@ -110,7 +110,7 @@ compose op1 op2 c = todo
 --   ["module Set11b where","","import Control.Monad"]
 
 hFetchLines :: Handle -> IO [String]
-hFetchLines = todo
+hFetchLines fileHandle = do fileContents <- hGetContents (fileHandle); return (lines (fileContents))
 
 ------------------------------------------------------------------------------
 -- Ex 6: Given a Handle and a list of line indexes, produce the lines
@@ -123,7 +123,7 @@ hFetchLines = todo
 -- handle.
 
 hSelectLines :: Handle -> [Int] -> IO [String]
-hSelectLines h nums = todo
+hSelectLines fileHandle (listOfIndexes) = do lines <- hFetchLines (fileHandle); return (map (\index -> lines !! (abs (1 - index))) (listOfIndexes))
 
 ------------------------------------------------------------------------------
 -- Ex 7: In this exercise we see how a program can be split into a
@@ -158,10 +158,10 @@ hSelectLines h nums = todo
 --   *Set11b>
 
 -- This is used in the example above. Don't change it!
-counter :: (String,Integer) -> (Bool,String,Integer)
-counter ("inc",n)   = (True,"done",n+1)
-counter ("print",n) = (True,show n,n)
-counter ("quit",n)  = (False,"bye bye",n)
+counter :: (String, Integer) -> (Bool, String, Integer)
+counter ("inc", n)   = (True, "done", n+1)
+counter ("print", n) = (True, show (n), n)
+counter ("quit", n)  = (False, "bye bye", n)
 
-interact' :: ((String,st) -> (Bool,String,st)) -> st -> IO st
-interact' f state = todo
+interact' :: ((String, string) -> (Bool, String, string)) -> string -> IO string
+interact' (pureFunction) (startingState) = do word <- getLine; let (boolean, string, newStartingState) = pureFunction (word, startingState) in putStrLn (string) >> if not boolean == True then return (newStartingState) else interact' (pureFunction) (newStartingState)

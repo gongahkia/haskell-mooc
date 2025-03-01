@@ -47,10 +47,10 @@ type Col   = Int
 type Coord = (Row, Col)
 
 nextRow :: Coord -> Coord
-nextRow (i,j) = todo
+nextRow (iPos, jPos) = (iPos + 1, 1)
 
 nextCol :: Coord -> Coord
-nextCol (i,j) = todo
+nextCol (iPos, jPos) = (iPos, jPos + 1)
 
 --------------------------------------------------------------------------------
 -- Ex 2: Implement the function prettyPrint that, given the size of
@@ -103,7 +103,7 @@ nextCol (i,j) = todo
 type Size = Int
 
 prettyPrint :: Size -> [Coord] -> String
-prettyPrint = todo
+prettyPrint boardSize queenCoordinatesList = concat [[if elem (row, col) (queenCoordinatesList) then 'Q' else '.' | col <- [1..boardSize]] ++ "\n" | row <- [1..boardSize]]
 
 --------------------------------------------------------------------------------
 -- Ex 3: The task in this exercise is to define the relations sameRow, sameCol,
@@ -127,16 +127,16 @@ prettyPrint = todo
 --   sameAntidiag (500,5) (5,500) ==> True
 
 sameRow :: Coord -> Coord -> Bool
-sameRow (i,j) (k,l) = todo
+sameRow (coordinate1Row, _) (coordinate2Row, _) = coordinate1Row == coordinate2Row
 
 sameCol :: Coord -> Coord -> Bool
-sameCol (i,j) (k,l) = todo
+sameCol (_, coordinate1Col) (_, coordinate2Col) = coordinate1Col == coordinate2Col
 
-sameDiag :: Coord -> Coord -> Bool
-sameDiag (i,j) (k,l) = todo
+sameDiag     :: Coord -> Coord -> Bool
+sameDiag     (coordinate1Row, coordinate1Col) (coordinate2Row, coordinate2Col) = (coordinate1Row - coordinate1Col) == (coordinate2Row - coordinate2Col)
 
 sameAntidiag :: Coord -> Coord -> Bool
-sameAntidiag (i,j) (k,l) = todo
+sameAntidiag (coordinate1Row, coordinate1Col) (coordinate2Row, coordinate2Col) = (coordinate1Row + coordinate1Col) == (coordinate2Row + coordinate2Col)
 
 --------------------------------------------------------------------------------
 -- Ex 4: In chess, a queen may capture another piece in the same row, column,
@@ -191,7 +191,7 @@ type Candidate = Coord
 type Stack     = [Coord]
 
 danger :: Candidate -> Stack -> Bool
-danger = todo
+danger candidate board = any (\queen -> (sameRow (candidate) (queen)) || (sameCol (candidate) (queen)) || (sameDiag (candidate) (queen)) || (sameAntidiag (candidate) (queen))) board
 
 --------------------------------------------------------------------------------
 -- Ex 5: In this exercise, the task is to write a modified version of
@@ -226,7 +226,7 @@ danger = todo
 -- solution to this version. Any working solution is okay in this exercise.)
 
 prettyPrint2 :: Size -> Stack -> String
-prettyPrint2 = todo
+prettyPrint2 boardSize queenCoordinatesList = concat [[if elem (row, col) (queenCoordinatesList) then 'Q' else if danger (row, col) (queenCoordinatesList) then '#' else '.' | col <- [1..boardSize]] ++ "\n" | row <- [1..boardSize]]
 
 --------------------------------------------------------------------------------
 -- Ex 6: Now that we can check if a piece can be safely placed into a square in
@@ -271,7 +271,7 @@ prettyPrint2 = todo
 --     Q#######
 
 fixFirst :: Size -> Stack -> Maybe Stack
-fixFirst n s = todo
+fixFirst boardSize board = if snd (head (board)) > boardSize then Nothing else if danger (head (board)) (tail (board)) then fixFirst (boardSize) (((fst (head (board))), ((snd (head (board))) + 1)) : tail (board)) else Just (board)
 
 --------------------------------------------------------------------------------
 -- Ex 7: We need two helper functions for stack management.
@@ -293,10 +293,10 @@ fixFirst n s = todo
 -- Hint: Remember nextRow and nextCol? Use them!
 
 continue :: Stack -> Stack
-continue s = todo
+continue board = (nextRow (head (board))) : board
 
 backtrack :: Stack -> Stack
-backtrack s = todo
+backtrack board = (nextCol (head (tail (board)))) : tail (tail (board))
 
 --------------------------------------------------------------------------------
 -- Ex 8: Let's take a step. Our algorithm solves the problem (in a
@@ -365,7 +365,7 @@ backtrack s = todo
 --     step 8 [(6,1),(5,4),(4,2),(3,5),(2,3),(1,1)] ==> [(5,5),(4,2),(3,5),(2,3),(1,1)]
 
 step :: Size -> Stack -> Stack
-step = todo
+step boardSize board = case fixFirst (boardSize) (board) of Nothing -> backtrack (board); Just (newBoard) -> continue (newBoard)
 
 --------------------------------------------------------------------------------
 -- Ex 9: Let's solve our puzzle! The function finish takes a partial
@@ -380,7 +380,7 @@ step = todo
 -- solve the n queens problem.
 
 finish :: Size -> Stack -> Stack
-finish = todo
+finish boardSize board = if length (board) <= boardSize then finish (boardSize) (step (boardSize) (board)) else tail (board)
 
 solve :: Size -> Stack
-solve n = finish n [(1,1)]
+solve boardSize = finish (boardSize) [(1,1)]

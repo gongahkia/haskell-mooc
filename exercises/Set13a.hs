@@ -28,38 +28,36 @@ import Examples.Bank
 -- functions split, checkNumber and checkCapitals so that readNames
 -- works correctly.
 
-(?>) :: Maybe a -> (a -> Maybe b) -> Maybe b
+(?>) :: Maybe x -> (x -> Maybe y) -> Maybe y
 Nothing ?> _ = Nothing   -- In case of failure, propagate failure
-Just x  ?> f = f x       -- In case of success, run the next computation
+Just x  ?> function = function x  -- In case of success, apply the function
 
 -- DO NOT touch this definition!
 readNames :: String -> Maybe (String,String)
-readNames s =
-  split s
-  ?>
-  checkNumber
-  ?>
-  checkCapitals
+readNames wholeName =
+  split wholeName
+  ?> checkNumber
+  ?> checkCapitals
 
 -- split should split a string into two words. If the input doesn't
 -- contain a space, Nothing should be returned
 --
 -- (NB! There are obviously other corner cases like the inputs " " and
 -- "a b c", but you don't need to worry about those here)
-split :: String -> Maybe (String,String)
-split = todo
+split :: String -> Maybe (String, String)
+split wholeName = case words wholeName of _ : [] -> Nothing; forname : surname : [] -> Just (forname, surname); _ -> Nothing
 
 -- checkNumber should take a pair of two strings and return them
 -- unchanged if they don't contain numbers. Otherwise Nothing is
 -- returned.
 checkNumber :: (String, String) -> Maybe (String, String)
-checkNumber = todo
+checkNumber (forname, surname) = if all isAlpha ((forname) ++ (surname)) then Just (forname, surname) else Nothing
 
 -- checkCapitals should take a pair of two strings and return them
 -- unchanged if both start with a capital letter. Otherwise Nothing is
 -- returned.
 checkCapitals :: (String, String) -> Maybe (String, String)
-checkCapitals (for,sur) = todo
+checkCapitals (forname, surname) = if (isUpper (head (forname))) && (isUpper (head (surname))) then Just (forname, surname) else Nothing
 
 ------------------------------------------------------------------------------
 -- Ex 2: Given a list of players and their scores (as [(String,Int)]),
@@ -86,7 +84,7 @@ checkCapitals (for,sur) = todo
 --     ==> Just "a"
 
 winner :: [(String,Int)] -> String -> String -> Maybe String
-winner scores player1 player2 = todo
+winner players player1 player2 = case (lookup (player1) (players), lookup (player2) (players)) of (Just (score1), Just (score2)) -> Just (if ((score1 >= score2) == True) then player1 else player2); _ -> Nothing
 
 ------------------------------------------------------------------------------
 -- Ex 3: given a list of indices and a list of values, return the sum
@@ -103,8 +101,8 @@ winner scores player1 player2 = todo
 --  selectSum [0..10] [4,6,9,20]
 --    Nothing
 
-selectSum :: Num a => [a] -> [Int] -> Maybe a
-selectSum xs is = todo
+selectSum :: Num x => [x] -> [Int] -> Maybe x
+selectSum listOfValues listOfIndices = do selectedValues <- mapM (\index -> if ((index < (length (listOfValues))) && (index >= 0)) then Just (listOfValues !! index) else Nothing) listOfIndices; return (sum (selectedValues))
 
 ------------------------------------------------------------------------------
 -- Ex 4: Here is the Logger monad from the course material. Implement
@@ -117,19 +115,18 @@ selectSum xs is = todo
 --   countAndLog even [0,1,2,3,4,5]
 --     ==> Logger ["0","2","4"] 3
 
-data Logger a = Logger [String] a
+data Logger x = Logger [String] x
   deriving (Show, Eq)
 
 msg :: String -> Logger ()
-msg s = Logger [s] ()
+msg string = Logger [string] ()
 
 instance Functor Logger where
-  fmap f (Logger l a) = Logger l (f a)
+  fmap functor (Logger logger x) = Logger logger (functor x)
 
 instance Monad Logger where
   return x = Logger [] x
-  Logger la a >>= f = Logger (la++lb) b
-    where Logger lb b = f a
+  Logger lb x >>= f = let Logger la y = f x in Logger (lb ++ la) y
 
 -- This is an Applicative instance that works for any monad, you
 -- can just ignore it for now. We'll get back to Applicative later.
@@ -137,8 +134,8 @@ instance Applicative Logger where
   pure = return
   (<*>) = ap
 
-countAndLog :: Show a => (a -> Bool) -> [a] -> Logger Int
-countAndLog = todo
+countAndLog :: Show x => (x -> Bool) -> [x] -> Logger Int
+countAndLog predicate inputList = Logger (map show (filter (predicate) (inputList))) (length (filter (predicate) (inputList)))
 
 ------------------------------------------------------------------------------
 -- Ex 5: You can find the Bank and BankOp code from the course
@@ -152,10 +149,10 @@ countAndLog = todo
 -- from Data.Map are available under the prefix Map.
 
 exampleBank :: Bank
-exampleBank = (Bank (Map.fromList [("harry",10),("cedric",7),("ginny",1)]))
+exampleBank = (Bank (Map.fromList [("harry", 10),("cedric", 7),("ginny", 1)]))
 
 balance :: String -> BankOp Int
-balance accountName = todo
+balance accountDetails = BankOp (\(Bank (allAccountsInBank)) -> (Map.findWithDefault (0) (accountDetails) (allAccountsInBank), Bank (allAccountsInBank)))
 
 ------------------------------------------------------------------------------
 -- Ex 6: Using the operations balance, withdrawOp and depositOp, and
@@ -173,7 +170,7 @@ balance accountName = todo
 --     ==> ((),Bank (fromList [("cedric",7),("ginny",1),("harry",10)]))
 
 rob :: String -> String -> BankOp ()
-rob from to = todo
+rob fromAccount toAccount = balance (fromAccount) +> withdrawOp (fromAccount) +> depositOp (toAccount)
 
 ------------------------------------------------------------------------------
 -- Ex 7: using the State monad, write the operation `update` that first
@@ -185,7 +182,7 @@ rob from to = todo
 --    ==> ((),7)
 
 update :: State Int ()
-update = todo
+update = do currentState <- get; put (1 + (currentState * 2))
 
 ------------------------------------------------------------------------------
 -- Ex 8: Checking that parentheses are balanced with the State monad.
@@ -213,11 +210,10 @@ update = todo
 --   parensMatch "(()))("      ==> False
 
 paren :: Char -> State Int ()
-paren = todo
-
+paren bracket = do currentState <- get; if ((bracket == ')') == True) then if ((currentState >= 0) == True) then put (currentState - 1) else return () else if ((bracket == '(') == True) then if ((currentState >= 0) == True) then put (1 + currentState) else return () else return ()
+  
 parensMatch :: String -> Bool
-parensMatch s = count == 0
-  where (_,count) = runState (mapM_ paren s) 0
+parensMatch s = let (_, count) = runState (mapM_ paren s) 0 in count == 0
 
 ------------------------------------------------------------------------------
 -- Ex 9: using a state of type [(a,Int)] we can keep track of the
@@ -243,8 +239,8 @@ parensMatch s = count == 0
 --
 -- PS. The order of the list of pairs doesn't matter
 
-count :: Eq a => a -> State [(a,Int)] ()
-count x = todo
+count :: Eq x => x -> State [(x,Int)] ()
+count typeToCount = do currentState <- get; if (elem (typeToCount) (map (fst) (currentState)) == True) then put (map (\(element, count) -> if (element == typeToCount) then (element, count + 1) else (element, count)) (currentState)) else put ((typeToCount, 1) : (currentState))
 
 ------------------------------------------------------------------------------
 -- Ex 10: Implement the operation occurrences, which
@@ -265,5 +261,5 @@ count x = todo
 --  runState (occurrences [4,7]) [(2,1),(3,1)]
 --    ==> (4,[(2,1),(3,1),(4,1),(7,1)])
 
-occurrences :: (Eq a) => [a] -> State [(a,Int)] Int
-occurrences xs = todo
+occurrences :: (Eq x) => [x] -> State [(x,Int)] Int
+occurrences inputList = do mapM_ count inputList; currentState <- get; return (length (currentState))

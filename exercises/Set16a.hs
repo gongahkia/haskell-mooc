@@ -17,8 +17,8 @@ import Data.List
 --  *Set16a> quickCheck (isSorted [])
 --  +++ OK, passed 1 test.
 
-isSorted :: (Show a, Ord a) => [a] -> Property
-isSorted = todo
+isSorted :: (Show x, Ord x) => [x] -> Property
+isSorted (inputListToCheckSorted) = if (((sort (inputListToCheckSorted)) == inputListToCheckSorted) == False) then property (False) else property (True)
 
 ------------------------------------------------------------------------------
 -- Ex 2: In this and the following exercises, we'll build a suite of
@@ -49,14 +49,14 @@ isSorted = todo
 --  *Set16a> quickCheck (sumIsLength [4,5,6,4,5,4] (freq1 [4,5,6,4,5,4]))
 --  +++ OK, passed 1 test.
 
-sumIsLength :: Show a => [a] -> [(a,Int)] -> Property
-sumIsLength input output = todo
+sumIsLength :: Show x => [x] -> [(x,Int)] -> Property
+sumIsLength (inputList) (outputList) = if (((sum (map (snd) (outputList))) == (length (inputList))) == False) then property (False) else property (True)
 
 -- This is a function that passes the sumIsLength test but is wrong
-freq1 :: Eq a => [a] -> [(a,Int)]
+freq1 :: Eq x => [x] -> [(x, Int)]
 freq1 [] = []
-freq1 [x] = [(x,1)]
-freq1 (x:y:xs) = [(x,1),(y,length xs + 1)]
+freq1 [x] = [(x, 1)]
+freq1 (element : list) = (element, 1) : freq1 (list)
 
 ------------------------------------------------------------------------------
 -- Ex 3: Implement a Property that takes an arbitrary element from the
@@ -78,12 +78,12 @@ freq1 (x:y:xs) = [(x,1),(y,length xs + 1)]
 --  *Set16a> quickCheck (inputInOutput [4,5,6,4,5,4] (freq2 [4,5,6,4,5,4]))
 --  +++ OK, passed 100 tests.
 
-inputInOutput :: (Show a, Eq a) => [a] -> [(a,Int)] -> Property
-inputInOutput input output = todo
+inputInOutput :: (Show x, Eq x) => [x] -> [(x,Int)] -> Property
+inputInOutput (inputList) (outputList) = forAll (elements (inputList)) (\element -> if ((elem (element) (map (fst) (outputList))) == False) then property (False) else property (True))
 
 -- This function passes both the sumIsLength and inputInOutput tests
-freq2 :: Eq a => [a] -> [(a,Int)]
-freq2 xs = map (\x -> (x,1)) xs
+freq2 :: Eq x => [x] -> [(x, Int)]
+freq2 list = map (\element -> (element, length (filter ((==) element) list))) (list)
 
 ------------------------------------------------------------------------------
 -- Ex 4: Implement a Property that takes a pair (x,n) from the
@@ -109,13 +109,13 @@ freq2 xs = map (\x -> (x,1)) xs
 --  *Set16a> quickCheck (outputInInput [4,5,6,4,5,4] (freq3 [4,5,6,4,5,4]))
 --  +++ OK, passed 100 tests.
 
-outputInInput :: (Show a, Eq a) => [a] -> [(a,Int)] -> Property
-outputInInput input output = todo
+outputInInput :: (Show x, Eq x) => [x] -> [(x, Int)] -> Property
+outputInInput (inputList) (outputList) = forAll (elements (outputList)) (\(element, count) -> if (((length (filter ((==) (element)) (inputList))) == count) == False) then property (False) else property (True))
 
 -- This function passes the outputInInput test but not the others
-freq3 :: Eq a => [a] -> [(a,Int)]
+freq3 :: Eq x => [x] -> [(x, Int)]
 freq3 [] = []
-freq3 (x:xs) = [(x,1 + length (filter (==x) xs))]
+freq3 (element : list) = (element, length (filter ((==) element) list)) : freq3 (list)
 
 ------------------------------------------------------------------------------
 -- Ex 5: Implement a Property that takes a candidate function freq, a
@@ -138,13 +138,12 @@ freq3 (x:xs) = [(x,1 + length (filter (==x) xs))]
 --  *Set16a> quickCheck (frequenciesProp frequencies)
 --  +++ OK, passed 100 tests.
 
-frequenciesProp :: ([Char] -> [(Char,Int)]) -> NonEmptyList Char -> Property
-frequenciesProp freq input = todo
+frequenciesProp :: ([Char] -> [(Char, Int)]) -> NonEmptyList Char -> Property
+frequenciesProp (function) (NonEmpty (charInputList)) = (sumIsLength (charInputList) (function (charInputList))) .&&. (inputInOutput (charInputList) (function (charInputList))) .&&. (outputInInput (charInputList) (function (charInputList)))
 
-frequencies :: Eq a => [a] -> [(a,Int)]
+frequencies :: Eq x => [x] -> [(x, Int)]
 frequencies [] = []
-frequencies (x:ys) = (x, length xs) : frequencies others
-  where (xs,others) = partition (==x) (x:ys)
+frequencies (element : list) = (element, 1 + length (filter ((==) element) list)) : frequencies (filter (/= element) list)
 
 ------------------------------------------------------------------------------
 -- Ex 6: Write a generator for lists that have these properties:
@@ -170,7 +169,7 @@ frequencies (x:ys) = (x, length xs) : frequencies others
 --  [2,4,10]
 
 genList :: Gen [Int]
-genList = todo
+genList = do lenghtOfList <- choose (3, 5); elementsForList <- (vectorOf (lenghtOfList) (choose (0, 10))); return (sort (elementsForList))
 
 ------------------------------------------------------------------------------
 -- Ex 7: Here are the datatypes Arg and Expression from Set 15. Write
@@ -201,14 +200,10 @@ genList = todo
 --  Minus (Number 0) (Number 7)
 --  Minus (Number 8) (Number 5)
 
-data Arg = Number Int | Variable Char
-  deriving (Show, Eq)
+data Arg = Number Int | Variable Char deriving (Show, Eq)
 
-data Expression = Plus Arg Arg | Minus Arg Arg
-  deriving (Show, Eq)
+data Expression = Plus Arg Arg | Minus Arg Arg deriving (Show, Eq)
 
-instance Arbitrary Arg where
-  arbitrary = todo
+instance Arbitrary Arg where arbitrary = oneof [Number <$> (choose (0, 10)), Variable <$> (elements ("abcxyz"))]
 
-instance Arbitrary Expression where
-  arbitrary = todo
+instance Arbitrary Expression where arbitrary = oneof [Plus <$> (arbitrary) <*> (arbitrary), Minus <$> (arbitrary) <*> (arbitrary)]
