@@ -1,6 +1,3 @@
-# By and large most hlint hints are too advanced for this course, and would just confuse students.
-# Since IDEs like VS Code ship with hlint enabled, it's good to disable all hints and enable
-# just a select few.
 - ignore: {}
 - hint: {name: Use if}
 - hint: {name: Use head}
